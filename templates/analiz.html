@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Haber Analiz Sayfası</title>
+    <style>
+       body {
+           font-family: Arial, sans-serif;
+           background-color: #f4f4f4;
+           background-image: url('/static/images/haberresim.png');
+           background-size: cover;
+           background-attachment: fixed;
+           margin: 0;
+           padding: 20px;
+       }
+
+       h1 {
+           color: #ffffff;
+           text-align: center;
+           text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+       }
+
+       .container {
+           max-width: 800px;
+           margin: 0 auto;
+           background: rgba(255, 255, 255, 0.8);
+           padding: 20px;
+           border-radius: 15px;
+           box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+           animation: fadeIn 1s ease-in-out;
+       }
+
+       textarea {
+           width: 100%;
+           height: 150px;
+           margin-bottom: 10px;
+           padding: 15px;
+           border-radius: 10px;
+           border: 1px solid rgba(0, 0, 0, 0.2);
+           font-size: 16px;
+           background: rgba(255, 255, 255, 0.9);
+           color: #333;
+           box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+       }
+
+       button {
+           background-color: #28a745;
+           color: white;
+           border: none;
+           padding: 10px 20px;
+           border-radius: 5px;
+           cursor: pointer;
+           font-size: 16px;
+           transition: background-color 0.3s, transform 0.3s;
+           box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+       }
+
+       button:hover {
+           background-color: #218838;
+           transform: scale(1.05);
+       }
+
+       .result, .english-result {
+           margin-top: 20px;
+           padding: 15px;
+           border-radius: 10px;
+           background: rgba(255, 255, 255, 0.9);
+           border: 1px solid rgba(0, 0, 0, 0.2);
+           color: #333;
+           box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+           animation: slideUp 1s ease-in-out;
+       }
+
+       .english-result {
+           border: 1px solid #007bff;
+           background: rgba(0, 123, 255, 0.9);
+           color: #ffffff;
+       }
+
+       .button-container {
+           text-align: center;
+           margin-top: 20px;
+       }
+
+       @keyframes fadeIn {
+           from { opacity: 0; transform: scale(0.9); }
+           to { opacity: 1; transform: scale(1); }
+       }
+
+       @keyframes slideUp {
+           from { transform: translateY(20px); opacity: 0; }
+           to { transform: translateY(0); opacity: 1; }
+       }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Haber Analiz Sayfası</h1>
+        <textarea id="newsInput" placeholder="Haber metnini buraya girin..."></textarea>
+        <div class="button-container">
+            <button id="analyzeButton">Analiz Et</button>
+            <button onclick="location.reload();">Yeni Haber Gir</button>
+        </div>
+        <div class="result" id="resultContainer" style="display: none;"></div>
+        <div class="english-result" id="englishResultContainer" style="display: none;"></div>
+    </div>
+
+
+    <div class="result" id="resultContainer" style="display: none;">
+        <h3>Analiz Sonuçları</h3>
+        <!-- Diğer sonuçlar burada -->
+        <div>
+            <h4>Kelime Frekansı Grafiği:</h4>
+            <img src="/static/common_words.png" alt="Kelime Frekansı Grafiği" style="width: 100%; border-radius: 10px; margin-top: 10px;">
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('analyzeButton').addEventListener('click', function() {
+            const newsText = document.getElementById('newsInput').value;
+            const resultContainer = document.getElementById('resultContainer');
+            const englishResultContainer = document.getElementById('englishResultContainer');
+
+            if (newsText.trim() === "") {
+                alert('Lütfen bir haber metni girin.');
+                return;
+            }
+
+            fetch('/analyze', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ news: newsText })
+            })
+            .then(response => response.json())
+            .then(data => {
+                resultContainer.style.display = 'block';
+                resultContainer.innerHTML = `
+                    <h3>Analiz Sonuçları</h3>
+                    <p><strong>LR Tahmini:</strong> ${data.lr_label}</p>
+                    <p><strong>DT Tahmini:</strong> ${data.dt_label}</p>
+                    <p><strong>RF Tahmini:</strong> ${data.rf_label}</p>
+                    <p><strong>NB Tahmini:</strong> ${data.nb_label}</p>
+                    <p><strong>SVM Tahmini:</strong> ${data.svm_label}</p>
+                    <p><strong>HABER DİLİ:</strong> ${data.haber_dili} (${data.haber_dili_tr})</p>
+                    <p><strong>DOĞRULUK ORANI:%</strong> ${data.accuracy}</p>
+                    <p><strong>SAHTE OLMA ORANI:%</strong> ${data.error_rate}</p>
+                    <p><strong>En Yaygın Kelimeler:</strong> ${data.common_words.map(word => word[0]).join(', ')}</p>
+                    <p><strong>Anahtar Kelimeler:</strong> ${data.keywords.join(', ')}</p>
+                    <p><strong>Duygu Analizi:</strong> Pozitiflik: ${(data.sentiment.polarity).toFixed(3)}, Öznellik: ${(data.sentiment.subjectivity).toFixed(3)}</p>
+                `;
+                englishResultContainer.style.display = 'block';
+                englishResultContainer.innerHTML = `
+                    <h3>Türkçe Çeviri</h3>
+                    <p>${data.translated_to_tr}</p>
+
+                    <div>
+                    <h4>Kelime Frekansı Grafiği:</h4>
+                      <!-- Görselin doğru bir şekilde yüklenmesi için dosya yolunun doğru olduğundan emin olun -->
+                      <img src="/static/common_words.png" alt="Kelime Frekansı Grafiği" style="width: 100%; border-radius: 10px; margin-top: 10px;">
+                       </div>
+                `;
+
+                
+            })
+            .catch(error => {
+                console.error('Hata:', error);
+                alert('Bir hata oluştu, lütfen tekrar deneyin.');
+            });
+        });
+    </script>
+</body>
+</html>
